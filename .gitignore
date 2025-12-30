@@ -1,0 +1,29 @@
+# Java build directories
+target/
+**/target/
+
+# Maven
+dependency-reduced-pom.xml
+**/dependency-reduced-pom.xml
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# OS
+.DS_Store
+Thumbs.db
