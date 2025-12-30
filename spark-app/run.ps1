@@ -1,9 +1,14 @@
 # Script to build and run the Spark Stock Processor
-# Uses the specific JDK at C:\Program Files\Java\jdk-25.0.1
+# Uses JDK from environment variable JDK21_PATH
 
 $ErrorActionPreference = "Stop"
 
-$JDK_PATH = "C:\Program Files\Java\jdk-21.0.2"
+$JDK_PATH = $env:JDK21_PATH
+
+if (-not $JDK_PATH) {
+    Write-Error "JDK21_PATH environment variable is not set"
+    exit 1
+}
 
 if (-not (Test-Path $JDK_PATH)) {
     Write-Error "JDK not found at $JDK_PATH"

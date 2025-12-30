@@ -1,10 +1,16 @@
 # Script to build and run the Flink Stock Processor
-# Uses the specific JDK at C:\Program Files\Java\jdk-25.0.1
+# Uses JDK from environment variable JDK25_PATH
 
 $ErrorActionPreference = "Stop"
 
 # Set JDK path
-$JDK_PATH = "C:\Program Files\Java\jdk-25.0.1"
+$JDK_PATH = $env:JDK25_PATH
+
+# Verify environment variable is set
+if (-not $JDK_PATH) {
+    Write-Error "JDK25_PATH environment variable is not set"
+    exit 1
+}
 
 # Verify JDK exists
 if (-not (Test-Path $JDK_PATH)) {
