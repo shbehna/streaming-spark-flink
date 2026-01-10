@@ -136,39 +136,140 @@
             font-size: 12px;
             color: #888;
         }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            background: #f8f9fa;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            color: #555;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom: 2px solid #764ba2;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>📈 Stock Ticker Generator</h1>
         
-        <form id="stockForm">
-            <div class="form-group">
-                <label for="symbol">Stock Symbol</label>
-                <input type="text" id="symbol" name="symbol" placeholder="e.g., AAPL, GOOGL, MSFT" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="price">Price ($)</label>
-                <input type="number" id="price" name="price" step="0.01" min="0.01" placeholder="e.g., 150.50" required>
-            </div>
-            
-            <button type="submit">Send Stock Data</button>
-        </form>
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('single')">Single event</button>
+            <button class="tab" onclick="switchTab('batch')">Multiple events</button>
+        </div>
+        
+        <div id="singleTab" class="tab-content active">
+            <form id="stockForm">
+                <div class="form-group">
+                    <label for="symbol">Stock Symbol</label>
+                    <input type="text" id="symbol" name="symbol" placeholder="e.g., AAPL, GOOGL, MSFT" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="price">Price ($)</label>
+                    <input type="number" id="price" name="price" step="0.01" min="0.01" placeholder="e.g., 150.50" required>
+                </div>
+                
+                <button type="submit">Send Stock Data</button>
+            </form>
+        </div>
+        
+        <div id="batchTab" class="tab-content">
+            <form id="batchForm">
+                <div class="form-group">
+                    <label for="batchSymbol">Stock Symbol</label>
+                    <input type="text" id="batchSymbol" name="batchSymbol" placeholder="e.g., AAPL, GOOGL, MSFT" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="numEvents">Number of Events</label>
+                    <input type="number" id="numEvents" name="numEvents" min="1" max="10000" placeholder="e.g., 100" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="minPrice">Min Price ($)</label>
+                    <input type="number" id="minPrice" name="minPrice" step="0.01" min="0.01" placeholder="e.g., 100.00" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="maxPrice">Max Price ($)</label>
+                    <input type="number" id="maxPrice" name="maxPrice" step="0.01" min="0.01" placeholder="e.g., 200.00" required>
+                </div>
+                
+                <button type="submit">Generate Batch Events</button>
+            </form>
+        </div>
         
         <div id="message" class="message"></div>
         
         <div class="history">
-            <h2>Recent Submissions</h2>
-            <div id="historyList"></div>
+            <h2>Recent Events</h2>
+            <div style="max-height: 400px; overflow-y: auto;">
+                <table id="eventsTable" style="width: 100%; border-collapse: collapse;">
+                    <thead style="position: sticky; top: 0; background: white;">
+                        <tr>
+                            <th style="padding: 10px; text-align: left; border-bottom: 2px solid #667eea;">Symbol</th>
+                            <th style="padding: 10px; text-align: right; border-bottom: 2px solid #667eea;">Price</th>
+                            <th style="padding: 10px; text-align: right; border-bottom: 2px solid #667eea;">Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody id="eventsTableBody">
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
     
     <script>
         const form = document.getElementById('stockForm');
+        const batchForm = document.getElementById('batchForm');
         const messageDiv = document.getElementById('message');
-        const historyList = document.getElementById('historyList');
+        const eventsTableBody = document.getElementById('eventsTableBody');
+        let allEvents = [];
         
+        // Tab switching
+        function switchTab(tabName) {
+            const tabs = document.querySelectorAll('.tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabs.forEach(tab => tab.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+            
+            if (tabName === 'single') {
+                tabs[0].classList.add('active');
+                document.getElementById('singleTab').classList.add('active');
+            } else {
+                tabs[1].classList.add('active');
+                document.getElementById('batchTab').classList.add('active');
+            }
+            
+            // Clear any messages
+            messageDiv.style.display = 'none';
+        }
+        
+        // Single event form
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -199,34 +300,91 @@
             }
         });
         
+        // Batch event form
+        batchForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const symbol = document.getElementById('batchSymbol').value;
+            const numEvents = document.getElementById('numEvents').value;
+            const minPrice = document.getElementById('minPrice').value;
+            const maxPrice = document.getElementById('maxPrice').value;
+            
+            if (parseFloat(minPrice) >= parseFloat(maxPrice)) {
+                showMessage('Min price must be less than max price', 'error');
+                return;
+            }
+            
+            try {
+                showMessage('Sending batch events...', 'success');
+                
+                const response = await fetch('/send_batch', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ symbol, numEvents, minPrice, maxPrice })
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    showMessage(`Successfully sent ${result.count} events!`, 'success');
+                    
+                    // Add all events to history in batch
+                    if (result.events && result.events.length > 0) {
+                        addEventsToHistory(result.events);
+                    }
+                } else {
+                    showMessage(result.message || 'Error sending batch', 'error');
+                }
+            } catch (error) {
+                showMessage('Connection error: ' + error.message, 'error');
+            }
+        });
+        
         function showMessage(text, type) {
             messageDiv.textContent = text;
             messageDiv.className = 'message ' + type;
             messageDiv.style.display = 'block';
             
             setTimeout(() => {
-                messageDiv.style.display = 'none';
+                if (type !== 'success' || !text.includes('Sending')) {
+                    messageDiv.style.display = 'none';
+                }
             }, 3000);
         }
         
         function addToHistory(data) {
-            const item = document.createElement('div');
-            item.className = 'history-item';
+            allEvents.push(data);
+            renderEventsTable();
+        }
+        
+        function addEventsToHistory(events) {
+            allEvents.push(...events);
+            renderEventsTable();
+        }
+        
+        function renderEventsTable() {
+            // Sort by timestamp descending (newest first)
+            allEvents.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
             
-            const time = new Date(data.timestamp).toLocaleTimeString();
+            // Rebuild table
+            eventsTableBody.innerHTML = '';
             
-            item.innerHTML = `
-                <span class="history-symbol">${data.symbol}</span> - 
-                <span class="history-price">$${parseFloat(data.price).toFixed(2)}</span>
-                <div class="history-time">${time}</div>
-            `;
-            
-            historyList.insertBefore(item, historyList.firstChild);
-            
-            // Keep only last 10 items
-            while (historyList.children.length > 10) {
-                historyList.removeChild(historyList.lastChild);
-            }
+            allEvents.forEach(event => {
+                const row = document.createElement('tr');
+                row.style.borderBottom = '1px solid #e0e0e0';
+                
+                const time = new Date(event.timestamp).toLocaleString();
+                
+                row.innerHTML = `
+                    <td style="padding: 10px; font-weight: 600; color: #667eea;">${event.symbol}</td>
+                    <td style="padding: 10px; text-align: right; font-weight: 600; color: #28a745;">$${parseFloat(event.price).toFixed(2)}</td>
+                    <td style="padding: 10px; text-align: right; font-size: 12px; color: #888;">${time}</td>
+                `;
+                
+                eventsTableBody.appendChild(row);
+            });
         }
     </script>
 </body>
