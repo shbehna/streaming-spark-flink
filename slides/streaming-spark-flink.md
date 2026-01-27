@@ -27,28 +27,21 @@ section.bottom-right .content {
 section.bottom-right .content p {
   margin: 5px 0;
 }
-section.comparison {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 40px;
-  padding: 40px 20px;
-  align-content: start;
+section table {
+  margin: 40px auto 0;
 }
-section.comparison h2 {
-  grid-column: 1 / -1;
+section table th,
+section table td {
+  font-size: 0.85em;
 }
-section.comparison .framework {
-  flex: 1;
-  text-align: left;
-  padding: 0 30px;
+section.winner table {
+  table-layout: fixed;
+  width: 80%;
 }
-section.comparison .framework img {
-  height: 150px;
-  margin-bottom: 5px;
-}
-section.comparison .framework ul,
-section.comparison .framework li {
-  font-size: 0.9em;
+small {
+  font-size: 0.4em;
+  display: block;
+  margin-top: -20px;
 }
 </style>
 
@@ -78,11 +71,11 @@ Hikari Data inc.
 
 ## Typical use cases
 
-- **Real-time analytics**
-- **Event-driven applications**
-- **Sensor data processing (IoT)**
-- **Business monitoring and alerting**
-- **Anomaly and fraud detection**
+- Real-time analytics
+- Event-driven applications
+- Sensor data processing (IoT)
+- Business monitoring and alerting
+- Anomaly and fraud detection
 
 ---
 
@@ -94,7 +87,7 @@ Hikari Data inc.
 
 <!-- _class: centered-image -->
 
-## Simple example (visual)
+## Simple example (timeline)
 
 ![w:1020](./img/state-management.png)
 
@@ -107,7 +100,6 @@ Hikari Data inc.
   - DStream API (legacy)
   - Structured Streaming (DataFrame API)
   - Spark SQL integration
-- **Languages**: Scala, Java, Python, R, SQL
 - **Additional libraries**: MLlib, GraphX, Spark Connect, Pandas Spark
 - **Mature ecosystem**
 
@@ -129,7 +121,6 @@ Hikari Data inc.
   - DataStream API (low-level, event-by-event processing)
   - Table API (relational operations)
   - Flink SQL
-- **Languages**: Scala, Java, Python (PyFlink), SQL
 - **Additional libraries**: Flink CDC, Flink ML, Flink CEP, Flink Agents
 - **Mature ecosystem (less than Spark but mature enough)**
 
@@ -149,52 +140,76 @@ Hikari Data inc.
 
 ![w:720](./img/micro-batch.png)
 
-(mettre les logos dans l'image)
+---
+
+## Performance
+
+| ![w:120](./img/spark-logo.png) | ![w:120](./img/flink-logo.png) |
+|:----:|:----:|
+| ![w:500](./img/spark-perf.png) | ![w:500](./img/flink-perf.png) |
+
+<small>Source: https://yahooeng.tumblr.com/post/135321837876/benchmarking-streaming-computation-engines-at</small>
 
 ---
 
 ## Expected features of a streaming platform
 
-- Supports multiple sources and sinks
-- Mapping / transformation
-- Filtering
-- Grouping
-- Aggregation
-- Windowing (tumbling / sliding)
-- Watermarks
-- Scalability (distributed computing)
-
-(mettre tableau côte à côte)
+| Feature | ![w:120](./img/spark-logo.png) | ![w:140](./img/flink-logo.png) |
+|---------|:----:|:----:|
+| Supports multiple sources and sinks | ✓ | ✓ |
+| Multiple connectors | ✓ | ✓ |
+| Integration with monitoring and management tools | ✓ | ✓ |
+| Language support (streaming) | Java, Scala, Python, SQL, R | Java, Scala, Python |
+| Scalability (distributed) | ✓ | ✓ |
 
 ---
 
-## Performance
+## Stateless operators
 
-(ajouted truc de IEEE)
+| Feature | ![w:120](./img/spark-logo.png) | ![w:140](./img/flink-logo.png) |
+|---------|:----:|:----:|
+| Transformations (map / flatMap) | ✓ | ✓ |
+| Filters | ✓ | ✓ |
+| Projections (select) | ✓ | ✓ |
+| Join with static data | ✓ | ✓ |
+| Partitioning | ✓ | ✓ |
 
 ---
 
-## Stateful vs stateless operators
+## Stateful operators
 
-| Stateless | Stateful |
-|-----------|----------|
-| Transformations (map or flatMap) | Aggregations (sum, count, avg, custom) |
-| Filters | Grouping |
-| Projections (select) | Windows (tumbling and sliding) |
-| Stream to static join | Stream to stream join |
-| Partitioning | Sessionalizing |
+| Feature | ![w:120](./img/spark-logo.png) | ![w:140](./img/flink-logo.png) |
+|---------|:----:|:----:|
+| Grouping | ✓ | ✓ |
+| Aggregations (sum, count, avg, custom) | ✓ | ✓ |
+| Windows (tumbling and sliding)  | ✓ | ✓ |
+| Stream to stream join | ✓ | ✓ |
+| Sessionalizing | ✓ | ✓ |
 
 ---
 
 ## Pitfalls of streaming apps
 
-- Time management (event time vs processing time)
-- State management
-- Delivery semantics (at-most once, at-least once, exactly once)
-- Fault tolerance
-- Backpressure
+| Feature | ![w:120](./img/spark-logo.png) | ![w:140](./img/flink-logo.png) |
+|---------|:----:|:----:|
+| Time management (event time vs processing time) | ✓ | ✓ |
+| Late-arriving data (Watermarks) | ✓ | ✓ |
+| Fine-grained state management | Limited | ✓ |
+| Delivery semantics (at-most once, at-least once, exactly once) | at-least once | exactly once |
+| Fault tolerance | limited | ✓ |
+| Handle backpressure | limited | ✓ |
 
-(Comparer spark et flink)
+---
+
+## Bread and butter considerations
+
+| Feature | ![w:120](./img/spark-logo.png) | ![w:140](./img/flink-logo.png) |
+|---------|:----:|:----:|
+| Learning curve | Moderate | Steep |
+| Product maturity | High | Medium |
+| Ecosystem maturity | High | Medium |
+| Vendor support | High | Low |
+| Scalability | Medium | High |
 
 ---
 
@@ -206,26 +221,12 @@ Hikari Data inc.
 
 ---
 
-<!-- _class: comparison -->
+<!-- _class: winner -->
 
 ## And the winner is...
 
-<div class="framework">
-
-![spark-logo](./img/spark-logo.png)
-
-- Mature and stable ecosystem
-- Ease of use
-- Data engineering / ML use cases
-
-</div>
-
-<div class="framework">
-
-![flink-logo](./img/flink-logo.png)
-
-- Low latency and predictable performance
-- Responsive event-driven apps
-- Robust state management and fault tolerence
-
-</div>
+| ![w:120](./img/spark-logo.png) | ![w:120](./img/flink-logo.png) |
+|:----:|:----:|
+| Mature and stable ecosystem | Low latency and predictable performance |
+| Ease of use | Responsive event-driven apps |
+| Data engineering / ML use cases | Robust state management and fault tolerance |
