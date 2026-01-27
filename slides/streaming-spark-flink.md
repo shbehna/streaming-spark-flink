@@ -69,28 +69,34 @@ Hikari Data inc.
 
 ---
 
-## What does Stream Processing enable ?
+## What is stream processing ?
 
-- **Real-time data processing**
-- **Continuous computation**
-- **Low latency**
-- **Processing deltas (vs complete datasets)**
+- Stream : Continuous sequence of events over time
+- Stream processing : Processing these events to get insights
 
 ---
 
-## Use cases
+## Typical use cases
 
 - **Real-time analytics**
 - **Event-driven applications**
 - **Sensor data processing (IoT)**
-- **Monitoring and alerting (business)**
-- **Fraud detection**
+- **Business monitoring and alerting**
+- **Anomaly and fraud detection**
 
 ---
 
-## Typical Architecture
+## Simple example
 
 ![bg center w:1080](./img/use-case.png)
+
+---
+
+<!-- _class: centered-image -->
+
+## Simple example (visual)
+
+![w:1020](./img/state-management.png)
 
 ---
 
@@ -99,7 +105,7 @@ Hikari Data inc.
 - **Micro-batch processing** - Divides stream into small batches
 - **APIs**:
   - DStream API (legacy)
-  - Structured Streaming (DataFrame/Dataset API)
+  - Structured Streaming (DataFrame API)
   - Spark SQL integration
 - **Languages**: Scala, Java, Python, R, SQL
 - **Additional libraries**: MLlib, GraphX, Spark Connect, Pandas Spark
@@ -123,7 +129,7 @@ Hikari Data inc.
   - DataStream API (low-level, event-by-event processing)
   - Table API (relational operations)
   - Flink SQL
-- **Languages**: Java, Scala, Python (PyFlink), SQL
+- **Languages**: Scala, Java, Python (PyFlink), SQL
 - **Additional libraries**: Flink CDC, Flink ML, Flink CEP, Flink Agents
 - **Mature ecosystem (less than Spark but mature enough)**
 
@@ -137,6 +143,16 @@ Hikari Data inc.
 
 ---
 
+<!-- _class: centered-image -->
+
+## Micro-batch vs continuous streaming
+
+![w:720](./img/micro-batch.png)
+
+(mettre les logos dans l'image)
+
+---
+
 ## Expected features of a streaming platform
 
 - Supports multiple sources and sinks
@@ -146,14 +162,15 @@ Hikari Data inc.
 - Aggregation
 - Windowing (tumbling / sliding)
 - Watermarks
-- Distributed computing
+- Scalability (distributed computing)
+
+(mettre tableau côte à côte)
 
 ---
 
-## State management
+## Performance
 
-(diagramme)
-(i am the state ?)
+(ajouted truc de IEEE)
 
 ---
 
@@ -161,21 +178,23 @@ Hikari Data inc.
 
 | Stateless | Stateful |
 |-----------|----------|
-| **Transformations (map or flatMap)** | **Aggregations (sum, count, avg, custom)** |
-| **Filters** | **Grouping** |
-| **Projections (select)** | **Windows (tumbling and sliding)** |
-| **Stream to static join** | **Stream to stream join** |
-| **Partitioning** | **Sessionalizing** |
+| Transformations (map or flatMap) | Aggregations (sum, count, avg, custom) |
+| Filters | Grouping |
+| Projections (select) | Windows (tumbling and sliding) |
+| Stream to static join | Stream to stream join |
+| Partitioning | Sessionalizing |
 
 ---
 
 ## Pitfalls of streaming apps
 
+- Time management (event time vs processing time)
 - State management
-- Time management
 - Delivery semantics (at-most once, at-least once, exactly once)
 - Fault tolerance
 - Backpressure
+
+(Comparer spark et flink)
 
 ---
 
@@ -205,7 +224,7 @@ Hikari Data inc.
 
 ![flink-logo](./img/flink-logo.png)
 
-- Predictable and low latency
+- Low latency and predictable performance
 - Responsive event-driven apps
 - Robust state management and fault tolerence
 
