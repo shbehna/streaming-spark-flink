@@ -177,7 +177,7 @@ StreamingQuery query = alerts
 ## Apache Flink ![w:200](./img/flink-logo.png)
 
 - **Designed for real-time stream processing**
-- **Processes events one at a time (true streaming)**
+- **Processes events independently (true streaming)**
 - **APIs**:
   - DataStream API (low-level, event-by-event processing)
   - Table API (relational operations)
