@@ -311,3 +311,13 @@ env.execute("Flink Stock Price Alert Processor");
 | Mature and stable ecosystem | Low latency and predictable performance |
 | Ease of use | Responsive event-driven apps |
 | Data engineering / ML use cases | Robust state management and fault tolerance |
+
+---
+
+<!-- _class: centered-image -->
+
+## Q & A
+
+Repo : https://github.com/shbehna/streaming-spark-flink
+
+![w:350](./img/qr-code.png)
