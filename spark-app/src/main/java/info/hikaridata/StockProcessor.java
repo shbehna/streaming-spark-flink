@@ -10,7 +10,6 @@ import org.apache.spark.sql.*;
 import org.apache.spark.sql.streaming.GroupState;
 import org.apache.spark.sql.streaming.GroupStateTimeout;
 import org.apache.spark.sql.streaming.StreamingQuery;
-import org.apache.spark.sql.streaming.StreamingQueryListener;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -69,7 +68,9 @@ public class StockProcessor {
                 
                 @Override
                 public void process(String value) {
-                    System.out.println(value);
+                    if (value != null && !value.isEmpty()) {
+                        System.out.println(value);
+                    }
                 }
                 
                 @Override

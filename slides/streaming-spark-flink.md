@@ -12,6 +12,18 @@ section.centered-image {
 section.centered-image p {
   text-align: center;
 }
+section.logo-header {
+  position: relative;
+}
+section.logo-header h2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+section.logo-header h2 img {
+  height: 100px;
+  margin-left: 20px;
+}
 section.bottom-right {
   display: flex;
   flex-direction: column;
@@ -79,7 +91,7 @@ Hikari Data inc.
 
 ---
 
-## Simple example
+## Simple demo
 
 ![bg center w:1080](./img/use-case.png)
 
@@ -87,13 +99,23 @@ Hikari Data inc.
 
 <!-- _class: centered-image -->
 
-## Simple example (timeline)
+## Demo
+
+![w:920](./img/demo-logo.png)
+
+---
+
+<!-- _class: centered-image -->
+
+## Timeline
 
 ![w:1020](./img/state-management.png)
 
 ---
 
-## Apache Spark
+<!-- _class: logo-header centered-image -->
+
+## Apache Spark ![w:200](./img/spark-logo.png)
 
 - **Micro-batch processing** - Divides stream into small batches
 - **APIs**:
@@ -105,15 +127,54 @@ Hikari Data inc.
 
 ---
 
-<!-- _class: centered-image -->
+<!-- _class: logo-header centered-image -->
 
-## Spark Architecture
+## Spark Architecture ![w:200](./img/spark-logo.png)
 
 ![w:720](./img/spark-arch.png)
 
 ---
 
-## Apache Flink
+<!-- _class: logo-header centered-image -->
+
+## Spark Code Snippet ![w:200](./img/spark-logo.png)
+
+```java
+Dataset<Row> lines = spark
+    .readStream()
+    .format("socket")
+    .option("host", SOCKET_HOST)
+    .option("port", SOCKET_PORT)
+    .load();
+
+Dataset<StockData> stockData = lines
+    .flatMap(new JsonParser(), Encoders.bean(StockData.class));
+
+Dataset<String> alerts = stockData
+    .groupByKey(
+        (MapFunction<StockData, String>) StockData::getSymbol,
+        Encoders.STRING()
+    )
+    .mapGroupsWithState(
+        new PriceChangeDetector(),
+        Encoders.bean(StockState.class),
+        Encoders.STRING(),
+        GroupStateTimeout.NoTimeout()
+    )
+    .filter((FilterFunction<String>) alert -> alert != null && !alert.isEmpty());
+
+StreamingQuery query = alerts
+    .writeStream()
+    .outputMode("update")
+    .format("console")
+    .start();
+```
+
+---
+
+<!-- _class: logo-header centered-image -->
+
+## Apache Flink ![w:200](./img/flink-logo.png)
 
 - **Designed for real-time stream processing**
 - **Processes events one at a time (true streaming)**
@@ -126,11 +187,31 @@ Hikari Data inc.
 
 ---
 
-<!-- _class: centered-image -->
+<!-- _class: logo-header centered-image -->
 
-## Flink Architecture
+## Flink Architecture ![w:200](./img/flink-logo.png)
 
 ![w:720](./img/flink-arch.png)
+
+---
+
+<!-- _class: logo-header centered-image -->
+
+## Flink Code Sample ![w:200](./img/flink-logo.png)
+
+```java
+final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+
+DataStream<String> socketStream = env.socketTextStream(SOCKET_HOST, SOCKET_PORT);
+
+socketStream
+    .flatMap(new JsonParser())
+    .keyBy(StockData::getSymbol)
+    .flatMap(new PriceChangeDetector())
+    .print();
+
+env.execute("Flink Stock Price Alert Processor");
+```
 
 ---
 

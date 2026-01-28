@@ -2,7 +2,7 @@ import socket
 import json
 import random
 import time
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, Response
 from datetime import datetime
 import threading
 
@@ -102,47 +102,44 @@ def send_batch():
         if num_events <= 0 or num_events > 10000:
             return jsonify({'status': 'error', 'message': 'Number of events must be between 1 and 10000'}), 400
         
-        sent_events = []
-        disconnected = []
+        def generate_events():
+            disconnected = []
+            
+            for i in range(num_events):
+                price = round(random.uniform(min_price, max_price), 2)
+                
+                stock_data = {
+                    'symbol': stock_symbol,
+                    'price': price,
+                    'timestamp': datetime.now().isoformat()
+                }
+                
+                json_data = json.dumps(stock_data) + '\n'
+                
+                for client in client_connections:
+                    if client not in disconnected:
+                        try:
+                            client.sendall(json_data.encode('utf-8'))
+                        except Exception as e:
+                            print(f"Error sending to client: {e}")
+                            disconnected.append(client)
+                
+                # Clean up disconnected clients
+                for client in disconnected:
+                    if client in client_connections:
+                        client_connections.remove(client)
+                        client.close()
+                
+                print(f"Sent: {stock_data}")
+                yield f"data: {json.dumps({'event': stock_data, 'index': i+1, 'total': num_events})}\n\n"
+                
+                # 1 second interval between events
+                if i < num_events - 1:
+                    time.sleep(1.0)
+            
+            yield f"data: {json.dumps({'status': 'complete', 'count': num_events})}\n\n"
         
-        for i in range(num_events):
-            price = round(random.uniform(min_price, max_price), 2)
-            
-            stock_data = {
-                'symbol': stock_symbol,
-                'price': price,
-                'timestamp': datetime.now().isoformat()
-            }
-            
-            json_data = json.dumps(stock_data) + '\n'
-            
-            for client in client_connections:
-                if client not in disconnected:
-                    try:
-                        client.sendall(json_data.encode('utf-8'))
-                    except Exception as e:
-                        print(f"Error sending to client: {e}")
-                        disconnected.append(client)
-            
-            sent_events.append(stock_data)
-            
-            # Small delay to avoid overwhelming the socket (optional)
-            if i < num_events - 1:
-                time.sleep(0.01)
-        
-        # Clean up disconnected clients
-        for client in disconnected:
-            if client in client_connections:
-                client_connections.remove(client)
-                client.close()
-        
-        print(f"Sent batch: {num_events} events for {stock_symbol}")
-        return jsonify({
-            'status': 'success',
-            'message': f'Sent {num_events} events',
-            'count': num_events,
-            'events': sent_events
-        })
+        return Response(generate_events(), mimetype='text/event-stream')
     
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500

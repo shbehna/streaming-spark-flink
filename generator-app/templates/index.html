@@ -218,7 +218,7 @@
                     <input type="number" id="maxPrice" name="maxPrice" step="0.01" min="0.01" placeholder="e.g., 200.00" required>
                 </div>
                 
-                <button type="submit">Generate Batch Events</button>
+                <button type="submit">Generate Multiple Events</button>
             </form>
         </div>
         
@@ -325,17 +325,34 @@
                     body: JSON.stringify({ symbol, numEvents, minPrice, maxPrice })
                 });
                 
-                const result = await response.json();
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
                 
-                if (result.status === 'success') {
-                    showMessage(`Successfully sent ${result.count} events!`, 'success');
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
                     
-                    // Add all events to history in batch
-                    if (result.events && result.events.length > 0) {
-                        addEventsToHistory(result.events);
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                
+                                if (data.event) {
+                                    addToHistory(data.event);
+                                    showMessage(`Sent ${data.index}/${data.total} events...`, 'success');
+                                } else if (data.status === 'complete') {
+                                    showMessage(`Successfully sent ${data.count} events!`, 'success');
+                                }
+                            } catch (e) {
+                                console.error('Error parsing event:', e);
+                            }
+                        }
                     }
-                } else {
-                    showMessage(result.message || 'Error sending batch', 'error');
                 }
             } catch (error) {
                 showMessage('Connection error: ' + error.message, 'error');
