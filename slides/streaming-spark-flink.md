@@ -74,14 +74,14 @@ Hikari Data inc.
 
 ---
 
-## What is stream processing ?
+## What is Stream Processing ?
 
 - Stream : Continuous sequence of events over time
 - Stream processing : Processing these events to get insights
 
 ---
 
-## Typical use cases
+## Typical Use Cases
 
 - Real-time analytics
 - Event-driven applications
@@ -91,7 +91,7 @@ Hikari Data inc.
 
 ---
 
-## Simple use-case
+## Typical Architecture
 
 ![bg center w:1080](./img/use-case.png)
 
@@ -217,7 +217,7 @@ env.execute("Flink Stock Price Alert Processor");
 
 <!-- _class: centered-image -->
 
-## Micro-batch vs continuous streaming
+## Micro-batch vs Continuous
 
 ![w:720](./img/micro-batch.png)
 
@@ -233,7 +233,7 @@ env.execute("Flink Stock Price Alert Processor");
 
 ---
 
-## Expected features of a streaming platform
+## Expected Features of a Streaming Platform
 
 | Feature | ![w:120](./img/spark-logo.png) | ![w:140](./img/flink-logo.png) |
 |---------|:----:|:----:|
@@ -245,7 +245,7 @@ env.execute("Flink Stock Price Alert Processor");
 
 ---
 
-## Stateless operators
+## Stateless Operators
 
 | Feature | ![w:120](./img/spark-logo.png) | ![w:140](./img/flink-logo.png) |
 |---------|:----:|:----:|
@@ -257,7 +257,7 @@ env.execute("Flink Stock Price Alert Processor");
 
 ---
 
-## Stateful operators
+## Stateful Operators
 
 | Feature | ![w:120](./img/spark-logo.png) | ![w:140](./img/flink-logo.png) |
 |---------|:----:|:----:|
@@ -269,7 +269,7 @@ env.execute("Flink Stock Price Alert Processor");
 
 ---
 
-## Pitfalls of streaming apps
+## Handling the Pitfalls of Streaming
 
 | Feature | ![w:120](./img/spark-logo.png) | ![w:140](./img/flink-logo.png) |
 |---------|:----:|:----:|
@@ -282,7 +282,7 @@ env.execute("Flink Stock Price Alert Processor");
 
 ---
 
-## Bread and butter considerations
+## Bread and Butter Considerations
 
 | Feature | ![w:120](./img/spark-logo.png) | ![w:140](./img/flink-logo.png) |
 |---------|:----:|:----:|
