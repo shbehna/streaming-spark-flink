@@ -91,7 +91,7 @@ Hikari Data inc.
 
 ---
 
-## Simple demo
+## Simple use-case
 
 ![bg center w:1080](./img/use-case.png)
 
