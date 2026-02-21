@@ -37,6 +37,12 @@ if [ $? -ne 0 ]; then
 fi
 
 echo ""
+echo "Cleaning state directories..."
+rm -rf /tmp/flink-* 2>/dev/null || true
+rm -rf flink-* 2>/dev/null || true
+echo "State cleaned"
+
+echo ""
 echo "Build successful! Starting Flink processor..."
 echo "Connecting to Kafka at localhost:9092"
 echo "Press Ctrl+C to stop"

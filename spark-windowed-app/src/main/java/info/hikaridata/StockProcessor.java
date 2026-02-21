@@ -10,7 +10,6 @@ import org.apache.spark.sql.*;
 import org.apache.spark.sql.streaming.GroupState;
 import org.apache.spark.sql.streaming.GroupStateTimeout;
 import org.apache.spark.sql.streaming.StreamingQuery;
-import org.apache.spark.sql.types.DataTypes;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -22,6 +21,7 @@ public class StockProcessor {
     
     private static final String KAFKA_BOOTSTRAP_SERVERS = "localhost:9092";
     private static final String KAFKA_TOPIC = "stock-data";
+    private static final String KAFKA_ALERTS_TOPIC = "spark-windowed-alerts";
     private static final double ALERT_THRESHOLD = 0.05;
     private static final String WINDOW_DURATION = "10 seconds";
     private static final String WATERMARK_DELAY = "2 seconds";
@@ -48,6 +48,7 @@ public class StockProcessor {
             .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS)
             .option("subscribe", KAFKA_TOPIC)
             .option("startingOffsets", "latest")
+            .option("failOnDataLoss", "false")
             .load();
         
         Dataset<Row> lines = kafkaData.selectExpr("CAST(value AS STRING) as value");
@@ -73,21 +74,23 @@ public class StockProcessor {
             )
             .select(
                 col("symbol"),
-                col("window.start").cast(DataTypes.StringType).alias("window_start"),
-                col("window.end").cast(DataTypes.StringType).alias("window_end"),
+                col("window"),
                 col("avg_price"),
                 col("data_count")
             );
         
         // Map rows to WindowAggregateRow beans
         Dataset<WindowAggregateRow> aggRows = windowedAgg.map(
-            (MapFunction<Row, WindowAggregateRow>) row -> new WindowAggregateRow(
-                row.getAs("symbol"),
-                row.getAs("window_start"),
-                row.getAs("window_end"),
-                ((Number) row.getAs("avg_price")).doubleValue(),
-                ((Number) row.getAs("data_count")).longValue()
-            ),
+            (MapFunction<Row, WindowAggregateRow>) row -> {
+                Row window = row.getStruct(row.fieldIndex("window"));
+                return new WindowAggregateRow(
+                    row.getString(row.fieldIndex("symbol")),
+                    window.getTimestamp(0).toString(),
+                    window.getTimestamp(1).toString(),
+                    row.getDouble(row.fieldIndex("avg_price")),
+                    row.getLong(row.fieldIndex("data_count"))
+                );
+            },
             Encoders.bean(WindowAggregateRow.class)
         );
         
@@ -106,25 +109,13 @@ public class StockProcessor {
             .filter((FilterFunction<String>) alert -> alert != null && !alert.isEmpty());
         
         StreamingQuery query = alerts
+            .selectExpr("CAST(value AS STRING) as value")
             .writeStream()
             .outputMode("update")
-            .foreach(new ForeachWriter<String>() {
-                @Override
-                public boolean open(long partitionId, long epochId) {
-                    return true;
-                }
-                
-                @Override
-                public void process(String value) {
-                    if (value != null && !value.isEmpty()) {
-                        System.out.println(value);
-                    }
-                }
-                
-                @Override
-                public void close(Throwable errorOrNull) {
-                }
-            })
+            .format("kafka")
+            .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS)
+            .option("topic", KAFKA_ALERTS_TOPIC)
+            .option("checkpointLocation", "/tmp/spark-windowed-alerts-checkpoint")
             .start();
         
         query.awaitTermination();
@@ -157,10 +148,14 @@ public class StockProcessor {
      */
     public static class WindowedPriceAlertDetector
             implements MapGroupsWithStateFunction<String, WindowAggregateRow, WindowedStockState, String> {
+        private transient ObjectMapper objectMapper;
         
         @Override
         public String call(String symbol, Iterator<WindowAggregateRow> values,
                            GroupState<WindowedStockState> state) throws Exception {
+            if (objectMapper == null) {
+                objectMapper = new ObjectMapper();
+            }
             
             // Consume all rows in this micro-batch for this key (typically one window result)
             WindowAggregateRow latest = null;
@@ -173,7 +168,6 @@ public class StockProcessor {
             }
             
             double averagePrice = latest.getAvgPrice();
-            String windowRange = latest.getWindowStart() + " - " + latest.getWindowEnd();
             long count = latest.getCount();
             String alert = "";
             
@@ -185,35 +179,29 @@ public class StockProcessor {
                     double percentChange = (averagePrice - previousAverage) / previousAverage;
                     
                     if (Math.abs(percentChange) >= ALERT_THRESHOLD) {
-                        String changeStr = String.format("%s%.2f%%",
-                            percentChange > 0 ? "+" : "",
-                            percentChange * 100);
-                        alert = String.format(
-                            "\n" +
-                            "╔═══════════════════════════════════════════════════════════════════════════╗\n" +
-                            "║                       WINDOWED PRICE ALERT                                ║\n" +
-                            "╠═══════════════════════════════════════════════════════════════════════════╣\n" +
-                            "║  Symbol:              %-53s║\n" +
-                            "║  Window:              %-53s║\n" +
-                            "║  Current Avg Price:   $%-52.2f║\n" +
-                            "║  Previous Avg Price:  $%-52.2f║\n" +
-                            "║  Change:              %-53s║\n" +
-                            "║  Data Points:         %-53d║\n" +
-                            "╚═══════════════════════════════════════════════════════════════════════════╝\n",
+                        WindowedAlert alertObj = new WindowedAlert(
                             symbol,
-                            windowRange,
                             averagePrice,
                             previousAverage,
-                            changeStr,
+                            percentChange * 100,
+                            latest.getWindowStart(),
+                            latest.getWindowEnd(),
                             count
                         );
+                        alert = objectMapper.writeValueAsString(alertObj);
                     }
                 }
             } else {
-                alert = String.format(
-                    "[%s] First window %s: Avg Price $%.2f (%d data points)",
-                    symbol, windowRange, averagePrice, count
+                WindowedAlert alertObj = new WindowedAlert(
+                    symbol,
+                    averagePrice,
+                    null,
+                    null,
+                    latest.getWindowStart(),
+                    latest.getWindowEnd(),
+                    count
                 );
+                alert = objectMapper.writeValueAsString(alertObj);
             }
             
             state.update(new WindowedStockState(averagePrice, latest.getWindowEnd()));

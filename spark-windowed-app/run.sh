@@ -33,6 +33,11 @@ if [ $? -ne 0 ]; then
 fi
 
 echo ""
+echo "Cleaning checkpoint directory..."
+rm -rf /tmp/spark-windowed-alerts-checkpoint
+echo "Checkpoint cleaned"
+
+echo ""
 echo "Build successful! Starting Spark Windowed processor..."
 echo "Connecting to Kafka at localhost:9092"
 echo "Press Ctrl+C to stop"

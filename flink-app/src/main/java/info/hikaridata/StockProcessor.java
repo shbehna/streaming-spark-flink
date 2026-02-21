@@ -9,6 +9,8 @@ import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
+import org.apache.flink.connector.kafka.sink.KafkaRecordSerializationSchema;
+import org.apache.flink.connector.kafka.sink.KafkaSink;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.util.Collector;
@@ -19,6 +21,7 @@ public class StockProcessor {
     
     private static final String KAFKA_BOOTSTRAP_SERVERS = "localhost:9092";
     private static final String KAFKA_TOPIC = "stock-data";
+    private static final String KAFKA_ALERTS_TOPIC = "flink-alerts";
     private static final String KAFKA_GROUP_ID = "flink-consumer-group";
     private static final double ALERT_THRESHOLD = 0.05;
     
@@ -39,11 +42,21 @@ public class StockProcessor {
             "Kafka Source"
         );
         
+        // Create Kafka sink for alerts
+        KafkaSink<String> alertSink = KafkaSink.<String>builder()
+            .setBootstrapServers(KAFKA_BOOTSTRAP_SERVERS)
+            .setRecordSerializer(KafkaRecordSerializationSchema.builder()
+                .setTopic(KAFKA_ALERTS_TOPIC)
+                .setValueSerializationSchema(new SimpleStringSchema())
+                .build()
+            )
+            .build();
+        
         kafkaStream
             .flatMap(new JsonParser())
             .keyBy(StockData::getSymbol)
             .flatMap(new PriceChangeDetector())
-            .print();
+            .sinkTo(alertSink);
         
         env.execute("Flink Stock Price Alert Processor");
     }
@@ -70,6 +83,7 @@ public class StockProcessor {
     
     public static class PriceChangeDetector extends RichFlatMapFunction<StockData, String> {
         private transient ValueState<StockState> priceState;
+        private transient ObjectMapper objectMapper;
         
         @Override
         public void open(Configuration parameters) throws Exception {
@@ -79,6 +93,7 @@ public class StockProcessor {
                 StockState.class
             );
             priceState = getRuntimeContext().getState(descriptor);
+            objectMapper = new ObjectMapper();
         }
         
         @Override
@@ -91,27 +106,14 @@ public class StockProcessor {
                 double percentChange = (currentPrice - previousPrice) / previousPrice;
                 
                 if (Math.abs(percentChange) >= ALERT_THRESHOLD) {
-                    String changeStr = String.format("%s%.2f%%", 
-                        percentChange > 0 ? "+" : "", 
-                        percentChange * 100);
-                    String alert = String.format(
-                        "\n" +
-                        "╔═══════════════════════════════════════════════════════════════════════════╗\n" +
-                        "║                              PRICE ALERT                                  ║\n" +
-                        "╠═══════════════════════════════════════════════════════════════════════════╣\n" +
-                        "║  Symbol:         %-57s║\n" +
-                        "║  Event Time:     %-57s║\n" +
-                        "║  Current Price:  $%-56.2f║\n" +
-                        "║  Previous Price: $%-56.2f║\n" +
-                        "║  Change:         %-57s║\n" +
-                        "╚═══════════════════════════════════════════════════════════════════════════╝\n",
+                    Alert alert = new Alert(
                         current.getSymbol(),
-                        current.getTimestamp(),
                         currentPrice,
                         previousPrice,
-                        changeStr
+                        percentChange * 100,
+                        current.getTimestamp()
                     );
-                    out.collect(alert);
+                    out.collect(objectMapper.writeValueAsString(alert));
                 }
             }
             

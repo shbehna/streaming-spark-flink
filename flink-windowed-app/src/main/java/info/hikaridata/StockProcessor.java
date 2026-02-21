@@ -9,6 +9,8 @@ import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
+import org.apache.flink.connector.kafka.sink.KafkaRecordSerializationSchema;
+import org.apache.flink.connector.kafka.sink.KafkaSink;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
@@ -27,6 +29,7 @@ public class StockProcessor {
     
     private static final String KAFKA_BOOTSTRAP_SERVERS = "localhost:9092";
     private static final String KAFKA_TOPIC = "stock-data";
+    private static final String KAFKA_ALERTS_TOPIC = "flink-windowed-alerts";
     private static final String KAFKA_GROUP_ID = "flink-windowed-consumer-group";
     private static final double ALERT_THRESHOLD = 0.05;
     private static final long WINDOW_SIZE_SECONDS = 10;
@@ -50,6 +53,16 @@ public class StockProcessor {
             "Kafka Source"
         );
         
+        // Create Kafka sink for alerts
+        KafkaSink<String> alertSink = KafkaSink.<String>builder()
+            .setBootstrapServers(KAFKA_BOOTSTRAP_SERVERS)
+            .setRecordSerializer(KafkaRecordSerializationSchema.builder()
+                .setTopic(KAFKA_ALERTS_TOPIC)
+                .setValueSerializationSchema(new SimpleStringSchema())
+                .build()
+            )
+            .build();
+        
         kafkaStream
             .flatMap(new JsonParser())
             .assignTimestampsAndWatermarks(
@@ -60,7 +73,7 @@ public class StockProcessor {
             .keyBy(StockData::getSymbol)
             .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_SIZE_SECONDS)))
             .process(new WindowedPriceAlertFunction())
-            .print();
+            .sinkTo(alertSink);
         
         env.execute("Flink Windowed Stock Price Alert Processor");
     }
@@ -95,6 +108,7 @@ public class StockProcessor {
             extends ProcessWindowFunction<StockData, String, String, TimeWindow> {
         
         private transient ValueState<WindowedStockState> windowState;
+        private transient ObjectMapper objectMapper;
         
         @Override
         public void open(Configuration parameters) throws Exception {
@@ -104,6 +118,7 @@ public class StockProcessor {
                 WindowedStockState.class
             );
             windowState = getRuntimeContext().getState(descriptor);
+            objectMapper = new ObjectMapper();
         }
         
         @Override
@@ -133,36 +148,28 @@ public class StockProcessor {
                 double percentChange = (averagePrice - previousAverage) / previousAverage;
                 
                 if (Math.abs(percentChange) >= ALERT_THRESHOLD) {
-                    String changeStr = String.format("%s%.2f%%",
-                        percentChange > 0 ? "+" : "",
-                        percentChange * 100);
-                    String alert = String.format(
-                        "\n" +
-                        "╔═══════════════════════════════════════════════════════════════════════════╗\n" +
-                        "║                       WINDOWED PRICE ALERT                                ║\n" +
-                        "╠═══════════════════════════════════════════════════════════════════════════╣\n" +
-                        "║  Symbol:              %-53s║\n" +
-                        "║  Window:              %-53s║\n" +
-                        "║  Current Avg Price:   $%-52.2f║\n" +
-                        "║  Previous Avg Price:  $%-52.2f║\n" +
-                        "║  Change:              %-53s║\n" +
-                        "║  Data Points:         %-53d║\n" +
-                        "╚═══════════════════════════════════════════════════════════════════════════╝\n",
+                    WindowedAlert alert = new WindowedAlert(
                         symbol,
-                        windowStart + " - " + windowEnd,
                         averagePrice,
                         previousAverage,
-                        changeStr,
+                        percentChange * 100,
+                        windowStart,
+                        windowEnd,
                         count
                     );
-                    out.collect(alert);
+                    out.collect(objectMapper.writeValueAsString(alert));
                 }
             } else {
-                String info = String.format(
-                    "[%s] First window %s - %s: Avg Price $%.2f (%d data points)",
-                    symbol, windowStart, windowEnd, averagePrice, count
+                WindowedAlert info = new WindowedAlert(
+                    symbol,
+                    averagePrice,
+                    null,
+                    null,
+                    windowStart,
+                    windowEnd,
+                    count
                 );
-                out.collect(info);
+                out.collect(objectMapper.writeValueAsString(info));
             }
             
             windowState.update(new WindowedStockState(averagePrice, windowEnd));
