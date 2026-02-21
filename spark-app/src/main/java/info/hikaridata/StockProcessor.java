@@ -18,8 +18,9 @@ import java.util.List;
 
 public class StockProcessor {
     
-    private static final String SOCKET_HOST = "localhost";
-    private static final int SOCKET_PORT = 9999;
+    private static final String KAFKA_BOOTSTRAP_SERVERS = "localhost:9092";
+    private static final String KAFKA_TOPIC = "stock-data";
+    private static final String KAFKA_ALERTS_TOPIC = "spark-alerts";
     private static final double ALERT_THRESHOLD = 0.05;
     
     public static void main(String[] args) throws Exception {
@@ -34,12 +35,16 @@ public class StockProcessor {
         
         spark.sparkContext().setLogLevel("ERROR");
         
-        Dataset<Row> lines = spark
+        Dataset<Row> kafkaData = spark
             .readStream()
-            .format("socket")
-            .option("host", SOCKET_HOST)
-            .option("port", SOCKET_PORT)
+            .format("kafka")
+            .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS)
+            .option("subscribe", KAFKA_TOPIC)
+            .option("startingOffsets", "latest")
+            .option("failOnDataLoss", "false")
             .load();
+        
+        Dataset<Row> lines = kafkaData.selectExpr("CAST(value AS STRING) as value");
         
         Dataset<StockData> stockData = lines
             .flatMap(new JsonParser(), Encoders.bean(StockData.class));
@@ -58,25 +63,13 @@ public class StockProcessor {
             .filter((FilterFunction<String>) alert -> alert != null && !alert.isEmpty());
         
         StreamingQuery query = alerts
+            .selectExpr("CAST(value AS STRING) as value")
             .writeStream()
             .outputMode("update")
-            .foreach(new ForeachWriter<String>() {
-                @Override
-                public boolean open(long partitionId, long epochId) {
-                    return true;
-                }
-                
-                @Override
-                public void process(String value) {
-                    if (value != null && !value.isEmpty()) {
-                        System.out.println(value);
-                    }
-                }
-                
-                @Override
-                public void close(Throwable errorOrNull) {
-                }
-            })
+            .format("kafka")
+            .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS)
+            .option("topic", KAFKA_ALERTS_TOPIC)
+            .option("checkpointLocation", "/tmp/spark-alerts-checkpoint")
             .start();
         
         query.awaitTermination();
@@ -104,9 +97,14 @@ public class StockProcessor {
     }
     
     public static class PriceChangeDetector implements MapGroupsWithStateFunction<String, StockData, StockState, String> {
+        private transient ObjectMapper objectMapper;
         
         @Override
         public String call(String symbol, Iterator<StockData> values, GroupState<StockState> state) throws Exception {
+            if (objectMapper == null) {
+                objectMapper = new ObjectMapper();
+            }
+            
             StockData current = null;
             while (values.hasNext()) {
                 current = values.next();
@@ -127,26 +125,14 @@ public class StockProcessor {
                     double percentChange = (currentPrice - previousPrice) / previousPrice;
                     
                     if (Math.abs(percentChange) >= ALERT_THRESHOLD) {
-                        String changeStr = String.format("%s%.2f%%", 
-                            percentChange > 0 ? "+" : "", 
-                            percentChange * 100);
-                        alert = String.format(
-                            "\n" +
-                            "╔═══════════════════════════════════════════════════════════════════════════╗\n" +
-                            "║                              PRICE ALERT                                  ║\n" +
-                            "╠═══════════════════════════════════════════════════════════════════════════╣\n" +
-                            "║  Symbol:         %-57s║\n" +
-                            "║  Event Time:     %-57s║\n" +
-                            "║  Current Price:  $%-56.2f║\n" +
-                            "║  Previous Price: $%-56.2f║\n" +
-                            "║  Change:         %-57s║\n" +
-                            "╚═══════════════════════════════════════════════════════════════════════════╝\n",
+                        Alert alertObj = new Alert(
                             current.getSymbol(),
-                            current.getTimestamp(),
                             currentPrice,
                             previousPrice,
-                            changeStr
+                            percentChange * 100,
+                            current.getTimestamp()
                         );
+                        alert = objectMapper.writeValueAsString(alertObj);
                     }
                 }
             }

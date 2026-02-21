@@ -27,5 +27,11 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+
+# Logs and PIDs
+logs/
+.pids/
+*.log
+
 # Slides
 slides/*.html

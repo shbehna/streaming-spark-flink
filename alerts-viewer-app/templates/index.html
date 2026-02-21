@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Alerts Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 36px;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .header p {
+            font-size: 16px;
+            opacity: 0.95;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            text-align: center;
+            transition: transform 0.2s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-3px);
+        }
+        
+        .stat-card h3 {
+            color: #666;
+            font-size: 13px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+        
+        .stat-card .count {
+            font-size: 32px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .tables-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 20px;
+        }
+        
+        .processor-table {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .table-header {
+            padding: 20px;
+            color: white;
+            font-weight: 600;
+            font-size: 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .table-header.flink {
+            background: linear-gradient(135deg, #e64a19 0%, #ff5722 100%);
+        }
+        
+        .table-header.flink-windowed {
+            background: linear-gradient(135deg, #d84315 0%, #e64a19 100%);
+        }
+        
+        .table-header.spark {
+            background: linear-gradient(135deg, #1565c0 0%, #1976d2 100%);
+        }
+        
+        .table-header.spark-windowed {
+            background: linear-gradient(135deg, #0d47a1 0%, #1565c0 100%);
+        }
+        
+        .alert-count-badge {
+            background: rgba(255,255,255,0.3);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+        
+        .table-wrapper {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        thead {
+            position: sticky;
+            top: 0;
+            background: #f8f9fa;
+            z-index: 1;
+        }
+        
+        th {
+            padding: 12px;
+            text-align: left;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #666;
+            font-weight: 600;
+            border-bottom: 2px solid #dee2e6;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e9ecef;
+            font-size: 14px;
+        }
+        
+        tbody tr {
+            transition: background-color 0.2s;
+            animation: slideIn 0.3s ease;
+        }
+        
+        tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .symbol {
+            font-weight: 700;
+            color: #667eea;
+        }
+        
+        .price {
+            font-weight: 600;
+            color: #28a745;
+        }
+        
+        .timestamp {
+            color: #888;
+            font-size: 12px;
+        }
+        
+        .alert-type {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .alert-type.high {
+            background: #ffebee;
+            color: #c62828;
+        }
+        
+        .alert-type.low {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+        
+        .alert-type.spike {
+            background: #fff3e0;
+            color: #e65100;
+        }
+        
+        .alert-type.drop {
+            background: #f3e5f5;
+            color: #6a1b9a;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 15px;
+            opacity: 0.3;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4caf50;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Stock Alerts Dashboard</h1>
+        <p><span class="status-indicator"></span>Real-time alerts from Spark & Flink processors</p>
+    </div>
+
+    <div class="stats">
+        <div class="stat-card">
+            <h3>Flink Alerts</h3>
+            <div class="count" id="flink-count">0</div>
+        </div>
+        <div class="stat-card">
+            <h3>Flink Windowed</h3>
+            <div class="count" id="flink-windowed-count">0</div>
+        </div>
+        <div class="stat-card">
+            <h3>Spark Alerts</h3>
+            <div class="count" id="spark-count">0</div>
+        </div>
+        <div class="stat-card">
+            <h3>Spark Windowed</h3>
+            <div class="count" id="spark-windowed-count">0</div>
+        </div>
+    </div>
+
+    <div class="tables-container">
+        <div class="processor-table">
+            <div class="table-header flink">
+                <span>Flink Processor</span>
+                <span class="alert-count-badge" id="flink-badge">0 alerts</span>
+            </div>
+            <div class="table-wrapper">
+                <table id="flink-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Symbol</th>
+                            <th>Price</th>
+                            <th>Variation %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="flink-alerts-tbody">
+                        <tr>
+                            <td colspan="4" class="empty-state">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                </svg>
+                                <div>Waiting for alerts...</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="processor-table">
+            <div class="table-header flink-windowed">
+                <span>Flink Windowed Processor</span>
+                <span class="alert-count-badge" id="flink-windowed-badge">0 alerts</span>
+            </div>
+            <div class="table-wrapper">
+                <table id="flink-windowed-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Symbol</th>
+                            <th>Price</th>
+                            <th>Variation %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="flink-windowed-alerts-tbody">
+                        <tr>
+                            <td colspan="4" class="empty-state">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                </svg>
+                                <div>Waiting for alerts...</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="processor-table">
+            <div class="table-header spark">
+                <span>Spark Processor</span>
+                <span class="alert-count-badge" id="spark-badge">0 alerts</span>
+            </div>
+            <div class="table-wrapper">
+                <table id="spark-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Symbol</th>
+                            <th>Price</th>
+                            <th>Variation %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="spark-alerts-tbody">
+                        <tr>
+                            <td colspan="4" class="empty-state">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                </svg>
+                                <div>Waiting for alerts...</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="processor-table">
+            <div class="table-header spark-windowed">
+                <span>Spark Windowed Processor</span>
+                <span class="alert-count-badge" id="spark-windowed-badge">0 alerts</span>
+            </div>
+            <div class="table-wrapper">
+                <table id="spark-windowed-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Symbol</th>
+                            <th>Price</th>
+                            <th>Variation %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="spark-windowed-alerts-tbody">
+                        <tr>
+                            <td colspan="4" class="empty-state">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                </svg>
+                                <div>Waiting for alerts...</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const alertCounts = {
+            'flink-alerts': 0,
+            'flink-windowed-alerts': 0,
+            'spark-alerts': 0,
+            'spark-windowed-alerts': 0
+        };
+
+        const maxAlertsPerTable = 50;
+
+        function parseAlert(alertText) {
+            const result = {
+                symbol: 'N/A',
+                price: 'N/A',
+                variation: 'N/A'
+            };
+
+            try {
+                // Parse JSON alert
+                const json = JSON.parse(alertText);
+                
+                // Extract symbol
+                result.symbol = json.symbol || 'N/A';
+                
+                // Extract current price
+                if (json.currentPrice !== undefined && json.currentPrice !== null) {
+                    result.price = parseFloat(json.currentPrice).toFixed(2);
+                }
+                
+                // Extract change percentage
+                if (json.changePercent !== undefined && json.changePercent !== null) {
+                    result.variation = parseFloat(json.changePercent).toFixed(2);
+                }
+            } catch (e) {
+                console.error('Error parsing alert JSON:', alertText, e);
+            }
+
+            return result;
+        }
+
+        function formatTime(timestamp) {
+            const date = new Date(timestamp * 1000);
+            return date.toLocaleTimeString();
+        }
+
+        function addAlertToTable(topic, alertData) {
+            const parsed = parseAlert(alertData.alert);
+            const tbody = document.getElementById(`${topic}-tbody`);
+            
+            const emptyState = tbody.querySelector('.empty-state');
+            if (emptyState && emptyState.parentElement) {
+                emptyState.parentElement.remove();
+            }
+
+            // Determine variation color
+            let variationClass = '';
+            let variationDisplay = parsed.variation;
+            if (parsed.variation !== 'N/A') {
+                const variationNum = parseFloat(parsed.variation);
+                if (!isNaN(variationNum)) {
+                    variationClass = variationNum >= 0 ? 'change positive' : 'change negative';
+                    variationDisplay = (variationNum >= 0 ? '+' : '') + variationNum + '%';
+                }
+            }
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="timestamp">${formatTime(alertData.timestamp)}</td>
+                <td><span class="symbol">${parsed.symbol}</span></td>
+                <td><span class="price">$${parsed.price}</span></td>
+                <td><span class="${variationClass}">${variationDisplay}</span></td>
+            `;
+
+            tbody.insertBefore(row, tbody.firstChild);
+
+            while (tbody.children.length > maxAlertsPerTable) {
+                tbody.removeChild(tbody.lastChild);
+            }
+
+            alertCounts[topic]++;
+            updateCounts();
+        }
+
+        function updateCounts() {
+            document.getElementById('flink-count').textContent = alertCounts['flink-alerts'];
+            document.getElementById('flink-windowed-count').textContent = alertCounts['flink-windowed-alerts'];
+            document.getElementById('spark-count').textContent = alertCounts['spark-alerts'];
+            document.getElementById('spark-windowed-count').textContent = alertCounts['spark-windowed-alerts'];
+
+            document.getElementById('flink-badge').textContent = `${alertCounts['flink-alerts']} alerts`;
+            document.getElementById('flink-windowed-badge').textContent = `${alertCounts['flink-windowed-alerts']} alerts`;
+            document.getElementById('spark-badge').textContent = `${alertCounts['spark-alerts']} alerts`;
+            document.getElementById('spark-windowed-badge').textContent = `${alertCounts['spark-windowed-alerts']} alerts`;
+        }
+
+        const eventSource = new EventSource('/stream');
+
+        eventSource.onmessage = function(event) {
+            if (event.data && event.data !== ': heartbeat') {
+                try {
+                    const alertData = JSON.parse(event.data);
+                    addAlertToTable(alertData.topic, alertData);
+                } catch (e) {
+                    console.error('Error parsing alert data:', e);
+                }
+            }
+        };
+
+        eventSource.onerror = function(error) {
+            console.error('EventSource error:', error);
+        };
+    </script>
+</body>
+</html>
