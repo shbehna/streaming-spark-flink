@@ -1,45 +1,22 @@
-import socket
 import json
 import random
 import time
 from flask import Flask, render_template, request, jsonify, Response
 from datetime import datetime
-import threading
+from kafka import KafkaProducer
 
 app = Flask(__name__)
 
-SOCKET_HOST = 'localhost'
-SOCKET_PORT = 9999
+KAFKA_BOOTSTRAP_SERVERS = 'localhost:9092'
+KAFKA_TOPIC = 'stock-data'
 
-server_socket = None
-client_connections = []
-server_running = False
+# Initialize Kafka producer
+producer = KafkaProducer(
+    bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+    value_serializer=lambda v: json.dumps(v).encode('utf-8')
+)
 
-
-def start_socket_server():
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server_socket.bind((SOCKET_HOST, SOCKET_PORT))
-    server_socket.listen(5)
-    server_running = True
-    print(f"Socket server started on {SOCKET_HOST}:{SOCKET_PORT}")
-    
-    def accept_connections():
-        while server_running:
-            try:
-                server_socket.settimeout(1.0)
-                client_socket, address = server_socket.accept()
-                client_connections.append(client_socket)
-                print(f"Client connected: {address}")
-            except socket.timeout:
-                continue
-            except Exception as e:
-                if server_running:
-                    print(f"Error accepting connection: {e}")
-                break
-    
-    thread = threading.Thread(target=accept_connections, daemon=True)
-    thread.start()
+print(f"Kafka producer initialized for topic '{KAFKA_TOPIC}' on {KAFKA_BOOTSTRAP_SERVERS}")
 
 
 @app.route('/')
@@ -63,21 +40,11 @@ def send_data():
             'timestamp': datetime.now().isoformat()
         }
         
-        json_data = json.dumps(stock_data) + '\n'
+        # Send to Kafka
+        producer.send(KAFKA_TOPIC, value=stock_data)
+        producer.flush()
         
-        disconnected = []
-        for client in client_connections:
-            try:
-                client.sendall(json_data.encode('utf-8'))
-            except Exception as e:
-                print(f"Error sending to client: {e}")
-                disconnected.append(client)
-        
-        for client in disconnected:
-            client_connections.remove(client)
-            client.close()
-        
-        print(f"Sent: {stock_data}")
+        print(f"Sent to Kafka: {stock_data}")
         return jsonify({'status': 'success', 'data': stock_data})
     
     except Exception as e:
@@ -103,8 +70,6 @@ def send_batch():
             return jsonify({'status': 'error', 'message': 'Number of events must be between 1 and 10000'}), 400
         
         def generate_events():
-            disconnected = []
-            
             for i in range(num_events):
                 price = round(random.uniform(min_price, max_price), 2)
                 
@@ -114,29 +79,18 @@ def send_batch():
                     'timestamp': datetime.now().isoformat()
                 }
                 
-                json_data = json.dumps(stock_data) + '\n'
+                # Send to Kafka
+                producer.send(KAFKA_TOPIC, value=stock_data)
                 
-                for client in client_connections:
-                    if client not in disconnected:
-                        try:
-                            client.sendall(json_data.encode('utf-8'))
-                        except Exception as e:
-                            print(f"Error sending to client: {e}")
-                            disconnected.append(client)
-                
-                # Clean up disconnected clients
-                for client in disconnected:
-                    if client in client_connections:
-                        client_connections.remove(client)
-                        client.close()
-                
-                print(f"Sent: {stock_data}")
+                print(f"Sent to Kafka: {stock_data}")
                 yield f"data: {json.dumps({'event': stock_data, 'index': i+1, 'total': num_events})}\n\n"
                 
                 # 1 second interval between events
                 if i < num_events - 1:
                     time.sleep(1.0)
             
+            # Flush all messages
+            producer.flush()
             yield f"data: {json.dumps({'status': 'complete', 'count': num_events})}\n\n"
         
         return Response(generate_events(), mimetype='text/event-stream')
@@ -146,6 +100,4 @@ def send_batch():
 
 
 if __name__ == '__main__':
-    start_socket_server()
-    
     app.run(debug=True, host='0.0.0.0', port=5000, use_reloader=False)

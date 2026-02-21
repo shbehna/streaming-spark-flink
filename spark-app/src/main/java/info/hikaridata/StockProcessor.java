@@ -18,8 +18,8 @@ import java.util.List;
 
 public class StockProcessor {
     
-    private static final String SOCKET_HOST = "localhost";
-    private static final int SOCKET_PORT = 9999;
+    private static final String KAFKA_BOOTSTRAP_SERVERS = "localhost:9092";
+    private static final String KAFKA_TOPIC = "stock-data";
     private static final double ALERT_THRESHOLD = 0.05;
     
     public static void main(String[] args) throws Exception {
@@ -34,12 +34,15 @@ public class StockProcessor {
         
         spark.sparkContext().setLogLevel("ERROR");
         
-        Dataset<Row> lines = spark
+        Dataset<Row> kafkaData = spark
             .readStream()
-            .format("socket")
-            .option("host", SOCKET_HOST)
-            .option("port", SOCKET_PORT)
+            .format("kafka")
+            .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS)
+            .option("subscribe", KAFKA_TOPIC)
+            .option("startingOffsets", "latest")
             .load();
+        
+        Dataset<Row> lines = kafkaData.selectExpr("CAST(value AS STRING) as value");
         
         Dataset<StockData> stockData = lines
             .flatMap(new JsonParser(), Encoders.bean(StockData.class));
