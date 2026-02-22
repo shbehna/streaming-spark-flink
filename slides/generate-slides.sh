@@ -16,7 +16,9 @@ echo "Slides generated successfully at: $OUTPUT_FILE"
 
 # Open the generated HTML file in the default browser (Windows)
 if command -v cmd.exe &> /dev/null; then
-    cmd.exe /c start "" "$OUTPUT_FILE"
+    # Convert Unix path to Windows path and open with default browser
+    WIN_PATH=$(wslpath -w "$OUTPUT_FILE" 2>/dev/null || cygpath -w "$OUTPUT_FILE" 2>/dev/null || echo "$OUTPUT_FILE")
+    explorer.exe "$WIN_PATH"
 elif command -v open &> /dev/null; then
     open "$OUTPUT_FILE"
 elif command -v xdg-open &> /dev/null; then

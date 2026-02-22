@@ -97,19 +97,36 @@ Hikari Data inc.
 
 ---
 
-<!-- _class: centered-image -->
+## Do you really need "real-time"
 
-## Demo
-
-![w:920](./img/demo-logo.png)
+- Real-time means milliseconds to a few seconds (for example : 5s end-to-end)
+- Leads to extra complexity (vs batch or "slow real-time")
+- Requires better monitoring and alerting
+- Is there a business case for it ?
 
 ---
 
 <!-- _class: centered-image -->
 
-## Timeline
+## Demo
+
+![w:920](./img/demo.png)
+
+---
+
+<!-- _class: centered-image -->
+
+## State management under the hood
 
 ![w:1020](./img/state-management.png)
+
+---
+
+<!-- _class: centered-image -->
+
+## More advanced state management
+
+![w:1020](./img/windowing.png)
 
 ---
 
@@ -294,14 +311,6 @@ env.execute("Flink Stock Price Alert Processor");
 
 ---
 
-## Do you really need "real-time"
-
-- Real-time means milliseconds to a few seconds (max 5s end-to-end)
-- Extra complexity
-- Is there a business case for it ?
-
----
-
 <!-- _class: winner -->
 
 ## And the winner is...
@@ -309,7 +318,7 @@ env.execute("Flink Stock Price Alert Processor");
 | ![w:120](./img/spark-logo.png) | ![w:120](./img/flink-logo.png) |
 |:----:|:----:|
 | Mature and stable ecosystem | Low latency and predictable performance |
-| Ease of use | Responsive event-driven apps |
+| More vendor / tooling support | Responsive event-driven apps |
 | Data engineering / ML use cases | Robust state management and fault tolerance |
 
 ---
