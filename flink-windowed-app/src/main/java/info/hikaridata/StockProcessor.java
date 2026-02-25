@@ -159,17 +159,6 @@ public class StockProcessor {
                     );
                     out.collect(objectMapper.writeValueAsString(alert));
                 }
-            } else {
-                WindowedAlert info = new WindowedAlert(
-                    symbol,
-                    averagePrice,
-                    null,
-                    null,
-                    windowStart,
-                    windowEnd,
-                    count
-                );
-                out.collect(objectMapper.writeValueAsString(info));
             }
             
             windowState.update(new WindowedStockState(averagePrice, windowEnd));

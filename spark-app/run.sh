@@ -33,9 +33,9 @@ if [ $? -ne 0 ]; then
 fi
 
 echo ""
-echo "Cleaning checkpoint directory..."
-rm -rf /tmp/spark-alerts-checkpoint
-echo "Checkpoint cleaned"
+echo "Cleaning checkpoint and state directories..."
+rm -rf checkpoint spark-warehouse metastore_db derby.log 2>/dev/null || true
+echo "State cleaned"
 
 echo ""
 echo "Build successful! Starting Spark processor..."

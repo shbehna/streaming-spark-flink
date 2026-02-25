@@ -69,7 +69,7 @@ public class StockProcessor {
             .format("kafka")
             .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS)
             .option("topic", KAFKA_ALERTS_TOPIC)
-            .option("checkpointLocation", "/tmp/spark-alerts-checkpoint")
+            .option("checkpointLocation", "checkpoint")
             .start();
         
         query.awaitTermination();

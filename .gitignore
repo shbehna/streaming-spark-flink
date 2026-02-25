@@ -33,5 +33,16 @@ logs/
 .pids/
 *.log
 
+# Streaming state and checkpoints
+checkpoint/
+**/checkpoint/
+spark-warehouse/
+**/spark-warehouse/
+metastore_db/
+**/metastore_db/
+derby.log
+.flink/
+**/.flink/
+
 # Slides
 slides/*.html

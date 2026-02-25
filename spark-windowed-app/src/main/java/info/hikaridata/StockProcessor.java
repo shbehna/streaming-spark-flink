@@ -111,11 +111,11 @@ public class StockProcessor {
         StreamingQuery query = alerts
             .selectExpr("CAST(value AS STRING) as value")
             .writeStream()
-            .outputMode("update")
+            .outputMode("append")
             .format("kafka")
             .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS)
             .option("topic", KAFKA_ALERTS_TOPIC)
-            .option("checkpointLocation", "/tmp/spark-windowed-alerts-checkpoint")
+            .option("checkpointLocation", "checkpoint")
             .start();
         
         query.awaitTermination();
@@ -191,17 +191,6 @@ public class StockProcessor {
                         alert = objectMapper.writeValueAsString(alertObj);
                     }
                 }
-            } else {
-                WindowedAlert alertObj = new WindowedAlert(
-                    symbol,
-                    averagePrice,
-                    null,
-                    null,
-                    latest.getWindowStart(),
-                    latest.getWindowEnd(),
-                    count
-                );
-                alert = objectMapper.writeValueAsString(alertObj);
             }
             
             state.update(new WindowedStockState(averagePrice, latest.getWindowEnd()));
