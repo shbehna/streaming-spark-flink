@@ -23,7 +23,7 @@ public class StockProcessor {
     private static final String KAFKA_TOPIC = "stock-data";
     private static final String KAFKA_ALERTS_TOPIC = "spark-windowed-alerts";
     private static final double ALERT_THRESHOLD = 0.05;
-    private static final String WINDOW_DURATION = "10 seconds";
+    private static final String WINDOW_DURATION = "5 seconds";
     private static final String WATERMARK_DELAY = "2 seconds";
     
     public static void main(String[] args) throws Exception {
@@ -111,7 +111,7 @@ public class StockProcessor {
         StreamingQuery query = alerts
             .selectExpr("CAST(value AS STRING) as value")
             .writeStream()
-            .outputMode("append")
+            .outputMode("update")
             .format("kafka")
             .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS)
             .option("topic", KAFKA_ALERTS_TOPIC)

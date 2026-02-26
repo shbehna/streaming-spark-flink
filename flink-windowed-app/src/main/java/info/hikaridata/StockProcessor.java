@@ -32,7 +32,7 @@ public class StockProcessor {
     private static final String KAFKA_ALERTS_TOPIC = "flink-windowed-alerts";
     private static final String KAFKA_GROUP_ID = "flink-windowed-consumer-group";
     private static final double ALERT_THRESHOLD = 0.05;
-    private static final long WINDOW_SIZE_SECONDS = 10;
+    private static final long WINDOW_SIZE_SECONDS = 5;
     private static final long WATERMARK_DELAY_SECONDS = 2;
     
     public static void main(String[] args) throws Exception {
@@ -99,7 +99,7 @@ public class StockProcessor {
     }
     
     /**
-     * Processes each 10-second tumbling window:
+     * Processes each 5-second tumbling window:
      *  - Computes the average price of all events in the window
      *  - Compares it against the previous window's average (kept in keyed state)
      *  - Emits an alert if the change is >= 5%

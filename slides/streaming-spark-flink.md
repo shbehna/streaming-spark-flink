@@ -74,6 +74,14 @@ Hikari Data inc.
 
 ---
 
+<!-- _class: centered-image -->
+
+## About me
+
+![h:400](./img/fry.jpg) ![h:400](./img/homer.jpg)
+
+---
+
 ## What is Stream Processing ?
 
 - Stream : Continuous sequence of events over time
@@ -107,6 +115,7 @@ Hikari Data inc.
 ---
 
 <!-- _class: centered-image -->
+
 
 ## Demo
 
